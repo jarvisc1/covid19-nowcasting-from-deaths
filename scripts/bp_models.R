@@ -2,8 +2,9 @@ library(bpmodels)
 library(tidyverse)
 
 ## Functions to reseed bp that are too small
-min_tree <- function(min_size = 100, stop_threshold = 100, ..., 
-                     chain_times = c("same", "non-overlap", "interval"), interval = 0) {
+min_tree <- function(min_size = 100, stop_threshold = 100, 
+                     chain_times = c("same", "non-overlap", "interval"), 
+                     interval = 0, ...) {
   ## generate chains
   chains <- chain_sim(infinite=stop_threshold, tree=T, ...)
   
@@ -27,15 +28,14 @@ min_tree <- function(min_size = 100, stop_threshold = 100, ...,
                 t_max = max(time)) %>% 
       filter(nn < min_size)
     
-   if(chain_times == "non-overlap"){
-    t_start <- small_chains$t_max[chain] + 1
-    print(t_start)
-   } else if(chain_times == "interval"){
-    t_start <- t_start + interval
-  }
-    
-    
     for (chain in 1:nrow(small_chains)){
+      
+      if(chain_times == "non-overlap"){
+       t_start <- small_chains$t_max[chain] + 1
+      } else if(chain_times == "interval"){
+       t_start <- t_start + interval
+      }
+     
       one_sim <- chain_sim(1,infinite = max_size, 
                            offspring="nbinom", 
                            mu = R, 
@@ -55,16 +55,18 @@ min_tree <- function(min_size = 100, stop_threshold = 100, ...,
   return(chains)
 }
 
+
+## Small values for testing
 ## number of outbreaks to simulate
-n <- 100
+n <- 10
 ## R
-R <- c(1.5, 2, 3)
+R <- c(1.5) #, 2, 3)
 ## overdispersion
-k <- c(0.35, 0.58, 1.18) # as per 0.58, 95% CI 0.35, 1.18). this is in the Bi et al medrXiv paper
+k <- c(0.35) # , 0.58, 1.18) # as per 0.58, 95% CI 0.35, 1.18). this is in the Bi et al medrXiv paper
 ## maximum outbreak size
-max_size <- 2000
+max_size <- 100
 ## min_size
-min_size <- 2000
+min_size <- 100
 
 Rk <- expand.grid(R = R, k = k)
 
@@ -88,15 +90,77 @@ for(i in 1:nrow(Rk)){
                    offspring="nbinom", 
                    mu = R, 
                    size = k, 
-                   serial = si)
+                   serial = si,
+                   chain_times = "non-overlap",
+                   )
   
   trees[[i]] <- list(Rk = Rk_i, bp_trees = tree)
   
 }
 
 
+# Get one scenario
+#####
+tr <- trees[[1]]
+tr <- tr$bp_trees 
+tr %>% count(n)
+tr <- tr %>% arrange(n, time)
+ 
+
+# Count cumulative cases
+tr$cid <- 1
+tr$csum <- ave(tr$cid, tr$n, FUN = cumsum)
+
+tr <- tr %>% group_by(n) %>% 
+  mutate(csum_max = max(csum))
+
+## Check non-overlap works
+tr %>% filter(id == 1)
+
+
+## Max cases for a death
+max_case_death <- qgeom(0.975, prob = 0.005) # = 735
+max_case_death <- 20 # test valye
+
+# Tag in the data when this happens
+tr <- tr %>% 
+  mutate(above = if_else(csum >= max_case_death, 1, 0),
+         time_step = if_else(above != lag(above) & above == 1, 1, 0)
+  )
+
+
+## Time until death 
+time_until_death <- qgamma(0.975, shape = 4.726, rate = 0.3151) # 31.23776
+time_until_death <- 3 #  Test for 2 days
+
+
+tr_first_case_death <- tr[tr$time_step==1,] %>% 
+  select(n, time) %>% 
+  mutate(time_first_case_death = if_else(time - time_until_death < 0 ,
+                                         0, 
+                                         time - time_until_death)) %>% 
+  select(-time)
+
+tr_first_case_death
+tr <- left_join(tr, tr_first_case_death)
+
+
+## Difference in number of cases now and when the first death became a case
+delta <- max_case_death - tr$csum[tr$time == tr$time_first_case_death]
+
+delta
+
+
+hist(delta)
+
+
+
+
+## NUmber for the paper. 
+
+
 # Max number paper
-qgeom(0.975, prob = 0.04) # = 735
+qgeom(0.975, prob = 0.005) # = 735
 qgeom(0.975, prob = 0.01) # = 367
 
 
