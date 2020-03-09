@@ -1,4 +1,4 @@
-library(bpmodels)
+library(bpmodels) #install from https://github.com/sbfnk/bpmodels
 library(tidyverse)
 library(data.table)
 library(doParallel)
@@ -33,11 +33,13 @@ min_tree_quick <- function(min_size = 100, stop_threshold = 100,
     .combine="rbind"
   ) %dopar% {
     
-    working_chain <- chains[chains$n == small_chains$n[chain], ]
+    working_chain <- as.data.table(
+      chains[chains$n == small_chains$n[chain], ]
+    )
     
     #only run until threshold is met
     while( 
-      (working_chain %>% count(n) %>% pull(nn) %>% min()) < min_size
+      min(working_chain[, .(nn=nrow(.SD)), by="n", .SDcols=c("n")][, nn]) < min_size
     ){
       if(chain_times == "non-overlap"){
         t_start <- max(working_chain$time) + 1
@@ -54,72 +56,21 @@ min_tree_quick <- function(min_size = 100, stop_threshold = 100,
                            t0 = t_start)
       
       one_sim$n <- small_chains$n[chain]
-      working_chain <- rbind(working_chain, one_sim)
+      working_chain <- rbindlist(list(working_chain, as.data.table(one_sim)))
     }
+    #returned working_chain is a DT with time, number of cases at every time, and
+    # cum. cases at every time
+    # need to process this post-function as there will be gaps in the time
+    # (not every day will have a case)
+    working_chain <- working_chain[, .(cases = nrow(.SD)), by=c("n","time")]
+    setorder(working_chain, time)
+    working_chain[, cumcases := cumsum(cases)]
     return(working_chain)
   }
   
   stopCluster(cl)
-  
   return(chains)
 }
-
-## Functions to reseed bp that are too small
-min_tree <- function(min_size = 100, stop_threshold = 100, 
-                     chain_times = c("same", "non-overlap", "interval"), 
-                     interval = 0, ...) {
-  ## generate chains
-  chains <- chain_sim(infinite=stop_threshold, tree=T, ...)
-  
-  ## Find chains that are small
-  small_chains <- chains %>%
-    count(n) %>%
-    filter(nn < min_size)
-  
-  # Check if all chains have taken off
-  min_chain_n <- min(small_chains$nn)
-  
-  # Put start time for bp
-  t_start = 0
-  
-  # Keep running bp untill all are at min size
-  while(min_chain_n < min_size){
-    
-    #this is where chains that have already met the threshold are
-    # filtered out
-    small_chains <- chains %>%
-      group_by(n) %>%
-      summarise(nn = n(),
-                t_max = max(time)) %>% 
-      filter(nn < min_size)
-    
-    for (chain in 1:nrow(small_chains)){
-      
-      if(chain_times == "non-overlap"){
-       t_start <- small_chains$t_max[chain] + 1
-      } else if(chain_times == "interval"){
-       t_start <- t_start + interval
-      }
-     
-      one_sim <- chain_sim(1,infinite = max_size, 
-                           offspring="nbinom", 
-                           mu = R, 
-                           size = k, 
-                           tree = T, 
-                           serial = si,
-                           t0 = t_start)
-      
-      one_sim$n <- small_chains$n[chain]
-      chains <- rbind(chains, one_sim)
-    }
-    min_chain_n <- chains %>%
-      count(n) %>% 
-      pull(nn) %>% 
-      min()
-  }
-  return(chains)
-}
-
 
 ## Small values for testing
 ## number of outbreaks to simulate
@@ -253,11 +204,10 @@ dbinom(deaths, delta, cfr)
 #P(deaths) ????
 # P one death = cfr
 # P x deaths = cfr^deaths ???
-cfr^deaths
 
 #P(delta | deaths)
 # depending on k
-dbinom(deaths, delta, cfr) * delta_p / cfr^deaths
+#dbinom(deaths, delta, cfr) * delta_p / P(deaths)
 
 
 
