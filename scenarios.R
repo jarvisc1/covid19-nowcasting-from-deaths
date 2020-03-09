@@ -3,11 +3,12 @@ suppressPackageStartupMessages({
   require(data.table)
 })
 
-.args <- c("scenarios.json", "scenarios.rds")
+.args <- c("scenarios.json", "scenarios.ssv")
 .args <- commandArgs(trailingOnly = TRUE)
 
 pars <- read_json(.args[1], simplifyVector = T)
 
-res <- data.table(do.call(expand.grid, pars))
+# for branching process runs, only want R, k grid
+pars$CFR <- NULL
 
-saveRDS(res, tail(.args, 1))
+fwrite(do.call(expand.grid, pars), tail(.args, 1), sep = " ", col.names = FALSE)

@@ -1,5 +1,8 @@
 
 R = Rscript $^ $@
 
-scenarios.rds: scenarios.R scenarios.json
+scenarios.csv: scenarios.R scenarios.json
+	${R}
+
+parameters.rda: parameters.R parameters.json
 	${R}
