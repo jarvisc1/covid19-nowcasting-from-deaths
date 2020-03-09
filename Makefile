@@ -1,8 +1,16 @@
 
 R = Rscript $^ $@
 
-scenarios.csv: scenarios.R scenarios.json
+RESDIR := results
+DATADIR := input
+
+default: $(addprefix ${RESDIR}/,scenarios.ssv parameters.rds)
+
+${RESDIR}:
+	mkdir -p $@
+
+${RESDIR}/scenarios.ssv: scenarios.R ${DATADIR}/scenarios.json | ${RESDIR}
 	${R}
 
-parameters.rda: parameters.R parameters.json
+${RESDIR}/parameters.rda: parameters.R ${DATADIR}/parameters.json | ${RESDIR}
 	${R}

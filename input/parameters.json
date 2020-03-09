@@ -1,0 +1,11 @@
+{
+  "death":{
+    "type":"lognormal", "mu": 20.2, "sd": 11.6
+  },
+  "serial":{
+    "type":"lognormal", "mu": 4.7, "sd": 2.9
+  },
+  "offspring":{
+    "type":"negbinomial"
+  }
+}
