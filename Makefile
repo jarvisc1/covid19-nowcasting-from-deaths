@@ -19,10 +19,11 @@ LEN := $(shell cat ${RESDIR}/scenarios.ssv | wc -l | xargs)
 SEQ := $(shell seq 1 ${LEN})
 
 CORES ?= 8
+SAMPS ?= 1e4
 
 ARRAYID ?= 1
 
 simtar: ${RESDIR}/bp_${ARRAYID}.rds
 
 ${RESDIR}/bp_%.rds: run_sims.R simulator.R | ${RESDIR}
-	Rscript $^ `sed -n '$*p' ${RESDIR}/scenarios.ssv` ${CORES} $@
+	Rscript $^ `sed -n '$*p' ${RESDIR}/scenarios.ssv` ${CORES} ${SAMPS} $@
