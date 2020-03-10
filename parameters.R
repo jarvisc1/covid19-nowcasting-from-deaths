@@ -3,6 +3,7 @@ suppressPackageStartupMessages({
 })
 
 .args <- c("parameters.json", "parameters.rda")
+.args <- commandArgs(trailingOnly = TRUE)
 
 #' the mean, sd of X ~ lognormal
 #' does not directly correspond to the mean, sd of the related
