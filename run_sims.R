@@ -4,6 +4,8 @@
 source(.args[1])
 R <- as.numeric(.args[2])
 k <- as.numeric(.args[3])
+crs <- as.integer(.args[4])
+setDTthreads(crs)
 
 tarout <- tail(.args, 1)
 
