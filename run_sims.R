@@ -1,5 +1,5 @@
 
-.args <- c("simulator.R", "1.5", "0.58", "8", "1e4")
+.args <- c("simulator.R", "1.5", "0.58", "2", "1e2", "thing.rds")
 .args <- commandArgs(trailingOnly = TRUE)
 
 source(.args[1])
