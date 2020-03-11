@@ -1,5 +1,5 @@
 
-.args <- c("simulator.R", "1.5", "0.58", "2", "1e2", "thing.rds")
+.args <- c("simulator.R", "1.5", "0.58", "2", "1e3", "thing.rds")
 .args <- commandArgs(trailingOnly = TRUE)
 
 source(.args[1])
@@ -19,7 +19,7 @@ si <- function(x,
 ) round(rlnorm(x, meanlog = mlog, sdlog = sdlog))
 
 tree <- min_tree_quick(
-  n=n, min_size = min_size, stop_threshold = max_size,
+  n=n, target_cases = max_size,
   offspring="nbinom", mu = R, size = k,
   serial = si, chain_times = "non-overlap"
 )
